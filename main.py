@@ -235,8 +235,6 @@ class OODALoop:
 # AUTO-DEBUGGING MIDDLEWARE
 # ===========================
 
-from fastapi.exceptions import RequestValidationError
-
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
     """Auto-debugging for validation errors (422)"""

@@ -46,16 +46,12 @@ class TestEfficiencyConstraints:
     
     def test_iteration_limit(self):
         """Test that iteration limit is enforced"""
-        # The ledger increments BEFORE checking if at max, so:
-        # Iteration 1: count=1, allowed (count < 5)
-        # Iteration 2: count=2, allowed
-        # Iteration 3: count=3, allowed
-        # Iteration 4: count=4, allowed
-        # Iteration 5: count=5, becomes at_max but still processes
-        # Iteration 6: count would be 6, but check happens first and blocks
+        # The ledger increments at the start of each request.
+        # is_at_max_iterations() returns true when count >= 5
+        # So the 5th request will increment to 5 and fail the check.
         
-        # Make 5 requests - all should succeed
-        for i in range(5):
+        # Make 4 requests - all should succeed
+        for i in range(4):
             response = client.post(
                 "/predict-churn",
                 json={
@@ -63,14 +59,17 @@ class TestEfficiencyConstraints:
                     "usage_metrics": {"daily_usage": 30.0}
                 }
             )
-            # The 5th request increments to 5, which equals max_iterations
-            # is_at_max_iterations() returns true when count >= 5
-            # But the check happens AFTER increment, so 5th request fails
-            if i < 4:
-                assert response.status_code == 200, f"Request {i+1} should succeed"
-            else:
-                # 5th request: increments to 5, then check fails
-                assert response.status_code == 429, f"Request {i+1} should fail"
+            assert response.status_code == 200, f"Request {i+1} should succeed"
+        
+        # 5th request: increments to 5, then check fails
+        response = client.post(
+            "/predict-churn",
+            json={
+                "user_id": "user_5",
+                "usage_metrics": {"daily_usage": 30.0}
+            }
+        )
+        assert response.status_code == 429, "Request 5 should fail (at max iterations)"
     
     def test_ledger_reset(self):
         """Test that ledger can be reset"""
